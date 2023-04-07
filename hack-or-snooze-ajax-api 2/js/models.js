@@ -25,7 +25,8 @@ class Story {
 
   getHostName() {
     // UNIMPLEMENTED: complete this function!
-    return "hostname.com";
+   const url =  new URL(`${this.url}`)
+   return url.hostname
   }
 }
 
@@ -59,6 +60,7 @@ class StoryList {
       method: "GET",
     });
 
+    console.log(response.data.stories);  
     // turn plain old story objects from API into instances of Story class
     const stories = response.data.stories.map(story => new Story(story));
 
@@ -73,9 +75,38 @@ class StoryList {
    * Returns the new Story instance
    */
 
-  async addStory( /* user, newStory */) {
+  async addStory( user, {title, author, url}) {
     // UNIMPLEMENTED: complete this function!
+  const token = user.loginToken;
+
+  const rep = await axios({
+    method: "POST",
+    url: `${BASE_URL}/stories`,
+    data: {token, story: {title, author, url}},
+  });
+  const story = new Story(rep.data.story)
+  this.stories.unshift(story)
+  user.ownStories.unshift(story)
+  
+return story
+
   }
+ 
+async removeStory(user, storyId){
+  const token = user.loginToken
+  const rep = await axios({
+  method: "DELETE",
+  url: `${BASE_URL}/stories`,
+  params: storyId,
+  data: {token: user.loginToken}
+  });
+  this.stories = this.stories.filter(story=> story.storyId !== storyId)
+  user.favorites = user.favorites.filter(story => story.storyId !== storyId)
+  user.ownStories = user.ownStories.filter(s => s.storyId !== storyId) 
+}
+
+
+
 }
 
 
@@ -193,4 +224,25 @@ class User {
       return null;
     }
   }
+
+async addFavorite(story){
+  this.favorite.push(story);
+  await this._addOrRemoveFavorite("add", story)
+}
+
+async removeFavoriteStory(story){
+  this.favorites = this.favorite.filter(story=> story.Id !== story.Id)
+}
+
+async _addOrRemoveFavorite(newState, story){
+  const method = newState === "add" ? "POST" : "DELETE";
+  const token = this.loginToken;
+  await axios ({
+    url: `${BASE_URL}/users/${this.username}/favorites/${story.storyId}`
+  });
+}
+
+isFavorite(story) {
+  return this.favorites.some(s => (s.storyId === story.storyId));
+}
 }
